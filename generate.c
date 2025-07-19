@@ -13,21 +13,23 @@ bool add_dir(const char *path, Jim *jim) {
 
     size_t save = temp_save();
 
-    jim_array_begin(jim);
+    jim_object_begin(jim);
     da_foreach(const char *, dir, &children) {
         const char *newpath = temp_sprintf("%s/%s", path, *dir);
+        jim_member_key(jim, *dir);
         jim_object_begin(jim);
-
-        jim_member_key(jim, "name");
-        jim_string(jim, *dir);
 
         jim_member_key(jim, "type");
         switch (get_file_type(newpath)) {
         case FILE_DIRECTORY:
             jim_string(jim, "dir");
 
-            if (strcmp(*dir, ".") == 0 || strcmp(*dir, "..") == 0) break;
             jim_member_key(jim, "children");
+            if (strcmp(*dir, ".") == 0 || strcmp(*dir, "..") == 0) {
+                jim_object_begin(jim);
+                jim_object_end(jim);
+                break;
+            }
             add_dir(newpath, jim);
             break;
         default:
@@ -44,7 +46,7 @@ bool add_dir(const char *path, Jim *jim) {
 
         jim_object_end(jim);
     }
-    jim_array_end(jim);
+    jim_object_end(jim);
     temp_rewind(save);
     da_free(children);
 
@@ -55,7 +57,16 @@ int main() {
     Jim jim = {.pp = 2};
     jim_begin(&jim);
 
+    jim_object_begin(&jim);
+    jim_member_key(&jim, "type");
+    jim_string(&jim, "dir");
+
+    jim_member_key(&jim, "children");
     if (!add_dir("content", &jim)) return 1;
+
+    jim_object_end(&jim);
+    
+
     write_entire_file("content.json", jim.sink, jim.sink_count);
 
     temp_reset();

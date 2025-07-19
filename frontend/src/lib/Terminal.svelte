@@ -1,7 +1,51 @@
 <script lang="ts">
+
+ type Dir = { [key: string]: Direntry | undefined };
+ type Direntry = {
+     "type": "file",
+     "content": string,
+ } | {
+     "type": "dir",
+     "children": Dir
+ };
+
+ import files_ from "../../../content.json";
+ const files: Direntry = files_ as unknown as Direntry;
+
  const user = 'root';
  const host = 'localhost';
  const cwd = '/';
+
+ const resolvePath = (path: string): Direntry | ERRNO => {
+     let file = files;
+
+     if (!path.startsWith('/')) {
+         path = cwd + path;
+     }
+     path = path.replaceAll('//', '/');
+     if (path.startsWith('/')) {
+         path = path.slice(1); 
+     }
+
+     const parts = path.split('/');
+     for (let part of parts) {
+         if (file.type === "file") {
+             return 'ENOTDIR';
+         } else if (part === '.' || part === '') {
+             continue;
+         } else {
+             const children = file.children;
+             if (children[part]) {
+                 file = children[part]
+             } else {
+                 return 'ENOENT';
+             }
+         }
+     }
+
+     return file;
+ }
+
 
  const lines: string[] = $state(['']);
  const symbol = () => user === 'root' ? '#' : '$';
@@ -26,11 +70,13 @@
      addLine(a);
  };
 
- type ERRNO = 'ENOENT';
+ type ERRNO = 'ENOENT' | 'ENOTDIR';
  const strerror = (err: ERRNO): string => {
      switch (err) {
          case 'ENOENT':
              return 'No such file or directory';
+         case 'ENOTDIR':
+             return 'Not a directory';
      }
  }
  const perror = (pref: string, err: ERRNO) => {
@@ -49,8 +95,21 @@
      return (progNames as readonly string[]).includes(key);
  }
  const progs: Progs = {
-     'ls': (...args: string[]) => {
-         alert(args);
+     'ls': (..._args: string[]) => {
+         const dir = resolvePath(cwd);
+         if (typeof dir === 'string') {
+             perror('ls', dir);
+         } else if (dir.type !== 'dir') {
+             perror('ls', 'ENOTDIR');
+         } else {
+             let i = 0;
+             const files = Object.keys(dir.children).sort();
+             for (let idx of files.keys()) {
+                 if (idx !== 0) addInternal(' ');
+                 addInternal(files[idx]);
+             }
+             addLine('');
+         }
          return 1;
      },
      'clear': (..._args: string[]) => {
@@ -112,9 +171,9 @@
     role="region">
     {#each lines as line}
         <pre class="terminal-line">{line}</pre><!--
-    -->{/each}<!--
-  --><input bind:this={inputElement} type="text" class="terminal-input"
-           bind:value={input} style="width: {inputWidth}"
-           onkeydown={onInputSubmit}
-    /><pre class="terminal-line terminal-cursor"> </pre>
+-->{/each}<!--
+--><input bind:this={inputElement} type="text" class="terminal-input"
+          bind:value={input} style="width: {inputWidth}"
+          onkeydown={onInputSubmit}
+   /><pre class="terminal-line terminal-cursor"> </pre>
 </div>
