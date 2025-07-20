@@ -51,6 +51,9 @@ body {
   background: var(--background-term);
   .terminal {
     margin: 1em;
+    height: 30em;
+    overflow-y: scroll;
+
     .terminal-line {
       display: inline;
       font-family: var(--term-font);

@@ -1,5 +1,4 @@
 <script lang="ts">
-
  type Dir = { [key: string]: Direntry | undefined };
  type Direntry = {
      "type": "file",
@@ -16,7 +15,7 @@
  const host = 'localhost';
  const cwd = '/';
 
- const resolvePath = (path: string): Direntry | ERRNO => {
+ const resolvePath = (path: string): {entry: Direntry, path: string} | ERRNO => {
      let file = files;
 
      if (!path.startsWith('/')) {
@@ -26,8 +25,10 @@
      if (path.startsWith('/')) {
          path = path.slice(1); 
      }
+     let parts = path.split('/');
+     parts = parts.filter(x => x !== '' && x !== '.');
+     path = parts.join('/');
 
-     const parts = path.split('/');
      for (let part of parts) {
          if (file.type === "file") {
              return 'ENOTDIR';
@@ -43,7 +44,7 @@
          }
      }
 
-     return file;
+     return {entry: file, path: path};
  }
 
 
@@ -52,6 +53,7 @@
 
  const prompt = `[${user}@${host} ${cwd}]${symbol()} `;
 
+ let terminal: HTMLElement;
  const addInternal = (a: string) => {
      const x = a.split('\n');
      for (let v in x.slice(0, -1)) {
@@ -62,7 +64,14 @@
      for (let v of x.slice(1)) {
          lines.push(v);
      }
+
+     queueMicrotask(() => {
+         if (terminal) {
+             terminal.scrollTop = terminal.scrollHeight;
+         }
+     });
  }
+
  const addPrompt = () => addInternal(prompt);
  const addLine = (a: string) => addInternal(`${a}\n`);
  const addInputLine = (a: string) => {
@@ -70,13 +79,17 @@
      addLine(a);
  };
 
- type ERRNO = 'ENOENT' | 'ENOTDIR';
+ type ERRNO = 'ENOENT' | 'EISDIR' | 'ENOTDIR' | 'ETOOMANYARGS';
  const strerror = (err: ERRNO): string => {
      switch (err) {
          case 'ENOENT':
              return 'No such file or directory';
+         case 'EISDIR':
+             return 'Is a directory';
          case 'ENOTDIR':
              return 'Not a directory';
+         case 'ETOOMANYARGS':
+             return 'Too many arguments';
      }
  }
  const perror = (pref: string, err: ERRNO) => {
@@ -84,7 +97,7 @@
  }
 
  type ProgFun = (...args: string[]) => number;
- const progNames = ['ls', 'clear', 'whoami', 'pwd'] as const;
+ const progNames = ['ls', 'clear', 'whoami', 'pwd', 'cd'] as const;
 
  type ProgNames = typeof progNames[number]
  type Progs = {
@@ -99,11 +112,10 @@
          const dir = resolvePath(cwd);
          if (typeof dir === 'string') {
              perror('ls', dir);
-         } else if (dir.type !== 'dir') {
+         } else if (dir.entry.type !== 'dir') {
              perror('ls', 'ENOTDIR');
          } else {
-             let i = 0;
-             const files = Object.keys(dir.children).sort();
+             const files = Object.keys(dir.entry.children).sort();
              for (let idx of files.keys()) {
                  if (idx !== 0) addInternal(' ');
                  addInternal(files[idx]);
@@ -123,6 +135,29 @@
      },
      'pwd': (..._args: string[]) => {
          addLine(cwd);
+         return 0;
+     },
+     'cd': (...args: string[]) => {
+         if (args.length > 1) {
+             perror('cd', 'ETOOMANYARGS');
+             return 1;
+         }
+         let path;
+         if (args.length === 0) {
+             path = '/';
+         } else {
+             path = args[0];
+         }
+
+         const dir = resolvePath(path);
+         if (typeof dir === 'string') {
+             perror(`cd: ${dir}`, dir);
+         } else if (dir.entry.type !== 'dir') {
+             perror(`cd: ${dir}`, 'ENOTDIR');
+         } else {
+             window.location.href = dir.path;
+         }
+
          return 0;
      }
  };
@@ -168,6 +203,7 @@
 
 <div class="terminal"
      onmouseenter={() => inputElement.focus()}
+    bind:this={terminal}
     role="region">
     {#each lines as line}
         <pre class="terminal-line">{line}</pre><!--
