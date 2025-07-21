@@ -15,7 +15,7 @@
  const host = 'localhost';
  const cwd = '/';
 
- const resolvePath = (path: string): {entry: Direntry, path: string} | ERRNO => {
+ function resolvePath(path: string): {entry: Direntry, path: string} | ERRNO {
      let file = files;
 
      if (!path.startsWith('/')) {
@@ -44,7 +44,7 @@
          }
      }
 
-     return {entry: file, path: path};
+     return {entry: file, path: `/${path}`};
  }
 
 
