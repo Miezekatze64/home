@@ -1,4 +1,6 @@
 <script lang="ts">
+ import { onMount } from "svelte";
+
  type Dir = { [key: string]: Direntry | undefined };
  type Direntry = {
      "type": "file",
@@ -8,12 +10,12 @@
      "children": Dir
  };
 
- import files_ from "../../../content.json";
+ import files_ from "../../../content.json" with {type: "json"};
  const files: Direntry = files_ as unknown as Direntry;
 
  const user = 'root';
  const host = 'localhost';
- const cwd = '/';
+ let cwd = $state('/');
 
  function resolvePath(path: string): {entry: Direntry, path: string} | ERRNO {
      let file = files;
@@ -51,7 +53,7 @@
  const lines: string[] = $state(['']);
  const symbol = () => user === 'root' ? '#' : '$';
 
- const prompt = `[${user}@${host} ${cwd}]${symbol()} `;
+ const prompt = () => `[${user}@${host} ${cwd}]${symbol()} `;
 
  let terminal: HTMLElement;
  const addInternal = (a: string) => {
@@ -72,7 +74,7 @@
      });
  }
 
- const addPrompt = () => addInternal(prompt);
+ const addPrompt = () => addInternal(prompt());
  const addLine = (a: string) => addInternal(`${a}\n`);
  const addInputLine = (a: string) => {
      addPrompt();
@@ -155,7 +157,9 @@
          } else if (dir.entry.type !== 'dir') {
              perror(`cd: ${dir}`, 'ENOTDIR');
          } else {
-             window.location.href = dir.path;
+             if (window && window.location) {
+                 window.location.href = dir.path;
+             }
          }
 
          return 0;
@@ -179,17 +183,23 @@
      }
  };
 
- addInputLine('ls');
- addLine('Hello, World => 42');
- addPrompt();
-
  let inputElement: HTMLInputElement;
 
  let input = $state('');
  let inputWidth = $state('0ch');
  $effect(() => {
      inputWidth = input.length + 'ch';
- })
+ });
+
+ onMount(() => {
+     cwd = window.location.pathname;
+
+     addInputLine('ls');
+     submitLine('ls');
+     addPrompt();
+
+     inputElement.focus();
+ });
 
  const onInputSubmit = (e: KeyboardEvent) => {
      if (e.key !== 'Enter') return;
@@ -199,17 +209,53 @@
      addPrompt();
  };
 
+ let term_top = $state(0);
+ let term_left = $state(0);
+
+ let start_term_top = 0;
+ let start_term_left = 0;
+ let start_drag_top = 0;
+ let start_drag_left = 0;
+
+ let drag = $state(false);
 </script>
 
-<div class="terminal"
-     onmouseenter={() => inputElement.focus()}
-    bind:this={terminal}
-    role="region">
-    {#each lines as line}
-        <pre class="terminal-line">{line}</pre><!--
+<div class="terminal-wrapper" style="top: {term_top}px; left: {term_left}px">
+    <div class="terminal-title" onmousedown={e => {
+                                            drag = true;
+                                            start_term_top = term_top;
+                                            start_term_left = term_left;
+                                            start_drag_top = e.clientY;
+                                            start_drag_left = e.clientX;
+                                            }} role="dialog"
+        class:drag={drag}
+         tabindex="0">
+        <div class="terminal-title-icon"></div>
+        <div class="terminal-title-text">xterm@localhost {cwd}</div>
+        <div class="terminal-title-close"></div>
+    </div>
+    <div class="terminal"
+         onmouseenter={() => inputElement.focus()}
+        bind:this={terminal}
+        role="region">
+        {#each lines as line}
+            <pre class="terminal-line">{line}</pre><!--
 -->{/each}<!--
 --><input bind:this={inputElement} type="text" class="terminal-input"
           bind:value={input} style="width: {inputWidth}"
           onkeydown={onInputSubmit}
    /><pre class="terminal-line terminal-cursor"> </pre>
+    </div>
 </div>
+
+
+<svelte:window onmouseup={() => {drag = false;}}
+    onmousemove={e => {
+                if (drag) {
+                    let dx = e.clientX - start_drag_left;
+                    let dy = e.clientY - start_drag_top;
+
+                    term_left = start_term_left + dx;
+                    term_top = start_term_top + dy;
+                }
+                }} />
