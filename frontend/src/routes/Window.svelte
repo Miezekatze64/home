@@ -42,6 +42,6 @@
                     let dy = e.clientY - start_drag_top;
 
                     term_left = start_term_left + dx;
-                    term_top = start_term_top + dy;
+                    term_top = Math.max(0, start_term_top + dy);
                 }
                 }} />

@@ -227,7 +227,6 @@
      } else if (res.entry.type !== 'dir') {
          perror('path', 'ENOTDIR');
      } else {
-         console.log(res.path, path);
          if (res.path !== path) {
              goto(`#${res.path}`);
          }
