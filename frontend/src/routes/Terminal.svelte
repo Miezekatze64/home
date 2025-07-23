@@ -1,6 +1,7 @@
 <script lang="ts">
- import { onMount } from "svelte";
+ import Window from "./Window.svelte";
 
+ import { onMount } from "svelte";
  type Dir = { [key: string]: Direntry | undefined };
  type Direntry = {
      "type": "file",
@@ -11,6 +12,7 @@
  };
 
  import files_ from "../../../content.json" with {type: "json"};
+ import { goto } from "$app/navigation";
  const files: Direntry = files_ as unknown as Direntry;
 
  const user = 'root';
@@ -21,7 +23,7 @@
      let file = files;
 
      if (!path.startsWith('/')) {
-         path = cwd + path;
+         path = `${cwd}/${path}`;
      }
      path = path.replaceAll('//', '/');
      if (path.startsWith('/')) {
@@ -29,16 +31,24 @@
      }
      let parts = path.split('/');
      parts = parts.filter(x => x !== '' && x !== '.');
-     path = parts.join('/');
+     let nparts = [];
+     for (let part of parts) {
+         if (part === '..') {
+             nparts.pop();
+         } else {
+             nparts.push(part);
+         }
+     }
+     path = nparts.join('/');
 
+     let stack: Direntry[] = [];
      for (let part of parts) {
          if (file.type === "file") {
              return 'ENOTDIR';
-         } else if (part === '.' || part === '') {
-             continue;
          } else {
              const children = file.children;
              if (children[part]) {
+                 stack.push(file);
                  file = children[part]
              } else {
                  return 'ENOENT';
@@ -99,9 +109,18 @@
  }
 
  type ProgFun = (...args: string[]) => number;
- const progNames = ['ls', 'clear', 'whoami', 'pwd', 'cd'] as const;
-
+ const progNames = ['ls', 'clear', 'whoami', 'pwd', 'cd', 'help'] as const;
  type ProgNames = typeof progNames[number]
+
+ const description: {[key in ProgNames]: string} = {
+     'ls':     'list files',
+     'clear':  'clear screen',
+     'whoami': 'print user',
+     'pwd':    'print current directory',
+     'cd':     'change directory',
+     'help':   'list availible commands'
+ };
+
  type Progs = {
      [key in ProgNames]: ProgFun;
  };
@@ -153,15 +172,23 @@
 
          const dir = resolvePath(path);
          if (typeof dir === 'string') {
-             perror(`cd: ${dir}`, dir);
+             perror(`cd: ${path}`, dir);
          } else if (dir.entry.type !== 'dir') {
-             perror(`cd: ${dir}`, 'ENOTDIR');
+             perror(`cd: ${path}`, 'ENOTDIR');
          } else {
-             if (window && window.location) {
-                 window.location.href = dir.path;
-             }
+             goto(`#${dir.path}`);
+             cwd = dir.path;
          }
 
+         return 0;
+     },
+     'help': (..._args: string[]) => {
+         addLine('Availible commands:');
+         let longest = progNames.map(x => x.length)
+                                .reduce((a, b, _i, _arr) => Math.max(a, b));
+         for (let prog of progNames) {
+             addLine(prog + ' '.repeat(longest + 1 - prog.length) + ' -- ' + description[prog]);
+         }
          return 0;
      }
  };
@@ -192,10 +219,23 @@
  });
 
  onMount(() => {
-     cwd = window.location.pathname;
+     const path = window.location.hash.slice(1);
+     const res = resolvePath(path);
 
-     addInputLine('ls');
-     submitLine('ls');
+     if (typeof res === 'string') {
+         perror('path', res);
+     } else if (res.entry.type !== 'dir') {
+         perror('path', 'ENOTDIR');
+     } else {
+         console.log(res.path, path);
+         if (res.path !== path) {
+             goto(`#${res.path}`);
+         }
+         cwd = res.path;
+     }
+
+     addInputLine('help');
+     submitLine('help');
      addPrompt();
 
      inputElement.focus();
@@ -209,53 +249,29 @@
      addPrompt();
  };
 
- let term_top = $state(0);
- let term_left = $state(0);
+ const {initTop, initLeft} = $props();
 
- let start_term_top = 0;
- let start_term_left = 0;
- let start_drag_top = 0;
- let start_drag_left = 0;
-
- let drag = $state(false);
+ export function focus() {
+     inputElement.focus();
+ }
 </script>
 
-<div class="terminal-wrapper" style="top: {term_top}px; left: {term_left}px">
-    <div class="terminal-title" onmousedown={e => {
-                                            drag = true;
-                                            start_term_top = term_top;
-                                            start_term_left = term_left;
-                                            start_drag_top = e.clientY;
-                                            start_drag_left = e.clientX;
-                                            }} role="dialog"
-        class:drag={drag}
-         tabindex="0">
-        <div class="terminal-title-icon"></div>
-        <div class="terminal-title-text">xterm@localhost {cwd}</div>
-        <div class="terminal-title-close"></div>
-    </div>
+<Window initTop={initTop} initLeft={initLeft}>
+    {#snippet title()}
+        <span>xterm@localhost {cwd}</span>
+    {/snippet}
     <div class="terminal"
-         onmouseenter={() => inputElement.focus()}
+         onclick={() => inputElement.focus()}
+        onkeydown={() => undefined}
         bind:this={terminal}
-        role="region">
+        role="button"
+        tabindex="0">
         {#each lines as line}
             <pre class="terminal-line">{line}</pre><!--
 -->{/each}<!--
 --><input bind:this={inputElement} type="text" class="terminal-input"
           bind:value={input} style="width: {inputWidth}"
           onkeydown={onInputSubmit}
-   /><pre class="terminal-line terminal-cursor"> </pre>
+   /><pre class="terminal-line terminal-cursor">&nbsp;</pre>
     </div>
-</div>
-
-
-<svelte:window onmouseup={() => {drag = false;}}
-    onmousemove={e => {
-                if (drag) {
-                    let dx = e.clientX - start_drag_left;
-                    let dy = e.clientY - start_drag_top;
-
-                    term_left = start_term_left + dx;
-                    term_top = start_term_top + dy;
-                }
-                }} />
+</Window>
