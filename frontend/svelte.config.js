@@ -6,8 +6,8 @@ const config = {
 
   kit: {
     adapter: adapter({
-      pages: '../dist',
-      assets: '../dist',
+      pages: 'build',
+      assets: 'build',
       fallback: 'index.html',
       router: false,
 
@@ -15,7 +15,7 @@ const config = {
       strict: true,
     }),
     prerender: { entries: ['*'] },
-  }
+  },
 };
 
 export default config;
