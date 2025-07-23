@@ -1,14 +1,17 @@
 <script lang="ts">
- const { children, title, initTop, initLeft } = $props();
+ const { children, title, initTop, initLeft, focus } = $props();
 
  console.assert(initTop !== undefined, 'initTop undefined');
  console.assert(initLeft !== undefined, 'initLeft undefined');
 
- let term_top: number  = $state(initTop);
- let term_left: number = $state(initLeft);
+ let win_top: number  = $state(initTop);
+ let win_left: number = $state(initLeft);
 
- let start_term_top = 0;
- let start_term_left = 0;
+ let win_width:  number = $state(960);
+ let win_height: number = $state(480);
+
+ let start_win_top = 0;
+ let start_win_left = 0;
  let start_drag_top = 0;
  let start_drag_left = 0;
 
@@ -18,28 +21,31 @@
  const getHeight = () => document.body.clientHeight;
 
  function moveWindow(e: MouseEvent) {
-     if (drag) {
-         let dx = e.clientX - start_drag_left;
-         let dy = e.clientY - start_drag_top;
+     e.preventDefault();
 
-         term_left = start_term_left + dx;
-         term_top = start_term_top + dy;
+     if (!drag) return;
+     let dx = e.clientX - start_drag_left;
+     let dy = e.clientY - start_drag_top;
 
-         if (term_left < 0) term_left = 0;
-         if (term_top < 0) term_top = 0;
-     }
- };
+     win_left = start_win_left + dx;
+     win_top = start_win_top + dy;
+
+     if (win_left < 0) win_left = 0;
+     if (win_top < 0) win_top = 0;
+     if (win_left + win_width > getWidth()) win_left = getWidth() - win_width;
+     if (win_top + win_height > getHeight()) win_top = getHeight() - win_height;
+ }
 
  function dragStart(e: MouseEvent) {
      drag = true;
-     start_term_top = term_top;
-     start_term_left = term_left;
+     start_win_top = win_top;
+     start_win_left = win_left;
      start_drag_top = e.clientY;
      start_drag_left = e.clientX;
- };
+ }
 </script>
 
-<div class="window" style="top: {term_top}px; left: {term_left}px">
+<div class="window" style="top: {win_top}px; left: {win_left}px; width: {win_width}px; height: {win_height}px;">
     <div class="window-title"
          onmousedown={dragStart} role="dialog" class:drag={drag} tabindex="0">
         <div class="window-title-icon"></div>
@@ -51,4 +57,6 @@
     </div>
 </div>
 
-<svelte:window onmouseup={() => {drag = false;}} onmousemove={moveWindow} />
+<svelte:window
+    onmouseup={() => {if (drag) focus(); drag = false;}}
+    onmousemove={moveWindow} />

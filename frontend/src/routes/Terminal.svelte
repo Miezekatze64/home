@@ -223,9 +223,9 @@
      const res = resolvePath(path);
 
      if (typeof res === 'string') {
-         perror('path', res);
+         perror(path, res);
      } else if (res.entry.type !== 'dir') {
-         perror('path', 'ENOTDIR');
+         perror(path, 'ENOTDIR');
      } else {
          if (res.path !== path) {
              goto(`#${res.path}`);
@@ -255,7 +255,7 @@
  }
 </script>
 
-<Window initTop={initTop} initLeft={initLeft}>
+<Window initTop={initTop} initLeft={initLeft} focus={focus}>
     {#snippet title()}
         <span>xterm@localhost {cwd}</span>
     {/snippet}

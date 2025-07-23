@@ -19,14 +19,14 @@
      obj: Application | undefined
  };
  let windows: AppComponent[] = $state([
-     {index: 0, component: Terminal, obj: undefined as Application | undefined},
-     {index: 1, component: Terminal, obj: undefined as Application | undefined},
-     {index: 2, component: Terminal, obj: undefined as Application | undefined},
+     {index: 0, component: Terminal, obj: undefined},
+     {index: 1, component: Terminal, obj: undefined},
+     {index: 2, component: Terminal, obj: undefined},
  ]);
 
  const {children} = $props();
 
- afterNavigate(() => {
+ const navigateHandler = () => {
      let end = windows.length - 1;
      for (let i of windows.keys()) {
          if (windows[i].index == end) {
@@ -34,7 +34,16 @@
              break;
          }
      }
+ };
+ afterNavigate(navigateHandler);
+
+ let key = $state(0n);
+ window.addEventListener('popstate', () => {
+     // reload everything
+     key++;
+     navigateHandler();
  });
+
 </script>
 
 <main class="main">
@@ -54,24 +63,26 @@
         </div>
     </noscript>
 
-    {#each windows as win, i}
-        {@const w = getWidth()}
+    {#key key}
+        {#each windows as win, i}
+            {@const w = getWidth()}
 
-        <div class="window-wrapper" style="z-index: {win.index};"
-             onmousedown={() => {
-                 let oindex = win.index;
-                 for (let w of windows) {
-                     if (w.index >= oindex) {
-                         w.index--;
+            <div class="window-wrapper" style="z-index: {win.index};"
+                 onmousedown={() => {
+                     let oindex = win.index;
+                     for (let w of windows) {
+                         if (w.index >= oindex) {
+                             w.index--;
+                         }
                      }
-                 }
-                 win.index = windows.length-1
-             }} role="button" tabindex="0" id="window-wrapper-{i}">
-            <win.component initTop={i*70+100}
-                           initLeft={i*50+w/4}
-                           bind:this="{win.obj}" />
-        </div>
-    {/each}
+                     win.index = windows.length-1
+                 }} role="button" tabindex="0" id="window-wrapper-{i}">
+                <win.component initTop={i*70+100}
+                               initLeft={i*50+w/4}
+                               bind:this="{win.obj}" />
+            </div>
+        {/each}
+    {/key}
 
     {@render children()}
 </main>

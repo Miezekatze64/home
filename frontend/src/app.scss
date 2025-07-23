@@ -11,6 +11,7 @@
   font-family: var(--font-main) Helvetica, Arial, sans-serif;
   color-scheme: dark;
   text-rendering: optimizeLegibility;
+  font-size: 16px;
 }
 
 pre {
@@ -65,13 +66,14 @@ body {
   width: 100%;
   background: var(--background-window);
   position: absolute;
-  width: 60em;
-
+  display: flex;
+  flex-direction: column;
+  
   .window-title {
     width: 100%;
     height: 1.5em;
     background: var(--color-accent);
-    outline: 1px solid var(--color-border);
+    border: 1px solid var(--color-border);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -146,11 +148,12 @@ body {
   .window-content {
     line-height: 1.1em;
     padding-top: 3px;
-    height: 30em;
+    height: 100%;
     width: 100%;
-    outline: 1px solid var(--color-border);
+    border: 1px solid var(--color-border);
 
     display: grid;
+    overflow: hidden; // for some reason, this works?
   }
 }
 

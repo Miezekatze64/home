@@ -67,7 +67,6 @@ int main(int argc, char **argv) {
     if (!add_dir("content", &jim)) return 1;
 
     jim_object_end(&jim);
-    
 
     write_entire_file("content.json", jim.sink, jim.sink_count);
 
