@@ -5,6 +5,9 @@
  import { afterNavigate } from '$app/navigation';
  import type { Component } from 'svelte';
 
+ const getWidth = () => document.body.clientWidth;
+ const getHeight = () => document.body.clientHeight;
+
  type Application = {
      focus: () => void,
  };
@@ -52,7 +55,8 @@
     </noscript>
 
     {#each windows as win, i}
-        {@const Win = win.component}
+        {@const w = getWidth()}
+
         <div class="window-wrapper" style="z-index: {win.index};"
              onmousedown={() => {
                  let oindex = win.index;
@@ -63,7 +67,9 @@
                  }
                  win.index = windows.length-1
              }} role="button" tabindex="0" id="window-wrapper-{i}">
-            <Win initTop={i*70+100} initLeft={i*50} bind:this="{win.obj}" />
+            <win.component initTop={i*70+100}
+                           initLeft={i*50+w/4}
+                           bind:this="{win.obj}" />
         </div>
     {/each}
 

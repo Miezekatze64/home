@@ -53,7 +53,9 @@ bool add_dir(const char *path, Jim *jim) {
     return true;
 }
 
-int main() {
+int main(int argc, char **argv) {
+    NOB_GO_REBUILD_URSELF(argc, argv);
+
     Jim jim = {.pp = 2};
     jim_begin(&jim);
 
