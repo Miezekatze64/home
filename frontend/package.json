@@ -6,7 +6,7 @@
   "scripts": {
 	"dev": "vite dev",
 	"build": "vite build",
-    "postbuild": "cp -vr build/* ../dist/",
+    "postbuild": "cp -vr build/* build/.* ../dist/",
 	"preview": "vite preview",
 	"prepare": "svelte-kit sync || echo ''",
 	"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
